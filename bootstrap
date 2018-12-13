@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -euo pipefail
+
+export R_HOME=/var/task/R
+
+while true
+do
+  HEADERS="$(mktemp)"
+
+  EVENT_DATA=$(curl -sS -LD "$HEADERS" -X GET "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next")
+  REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id "$HEADERS" | tr -d '[:space:]' | cut -d: -f2)
+
+  RESPONSE=$(/var/task/R/bin/exec/R --slave --no-restore --file=$_HANDLER.R --args "$EVENT_DATA")
+
+  curl -X POST "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/$REQUEST_ID/response" -d "$RESPONSE"
+done
